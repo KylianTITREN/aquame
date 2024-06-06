@@ -10,9 +10,14 @@
     "test": "jest"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^1.23.1",
+    "@react-native-community/push-notification-ios": "^1.11.0",
+    "@types/react-native-push-notification": "^8.1.4",
     "@types/react-native-shared-group-preferences": "^1.1.4",
     "react": "18.2.0",
-    "react-native": "0.74.2"
+    "react-native": "0.74.2",
+    "react-native-push-notification": "^8.1.1",
+    "react-native-shared-group-preferences": "^1.1.24"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

@@ -1,117 +1,115 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
   View,
+  Text,
+  Button,
+  StyleSheet,
+  Platform,
+  ToastAndroid,
+  NativeModules,
 } from 'react-native';
+import SharedGroupPreferences from 'react-native-shared-group-preferences';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import PushNotification from 'react-native-push-notification';
+import PushNotificationIOS from '@react-native-community/push-notification-ios';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const group = 'group.drinkme';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+const SharedStorage = NativeModules.SharedStorage;
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+const App = () => {
+  const [glasses, setGlasses] = useState<number>(0);
+  const widgetData = {
+    glasses,
+  };
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  useEffect(() => {
+    loadGlasses();
+    configurePushNotifications();
+    scheduleNotification();
+  }, []);
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const loadGlasses = async () => {
+    try {
+      const value = await AsyncStorage.getItem('glasses');
+      if (value !== null) {
+        setGlasses(parseInt(value));
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const saveGlasses = async (value: number) => {
+    try {
+      if (Platform.OS === 'ios') {
+        await SharedGroupPreferences.setItem('drinked', widgetData, group);
+      } else {
+        SharedStorage.set(JSON.stringify({text: value}));
+        ToastAndroid.show('Change value successfully!', ToastAndroid.SHORT);
+      }
+      await AsyncStorage.setItem('glasses', value.toString());
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const addGlass = () => {
+    const newGlasses = glasses + 1;
+    setGlasses(newGlasses);
+    saveGlasses(newGlasses);
+  };
+
+  const configurePushNotifications = () => {
+    PushNotification.configure({
+      onRegister: function (token: any) {
+        console.log('TOKEN:', token);
+      },
+      onNotification: function (notification: any) {
+        console.log('NOTIFICATION:', notification);
+        notification.finish(PushNotificationIOS.FetchResult.NoData);
+      },
+      permissions: {
+        alert: true,
+        badge: true,
+        sound: true,
+      },
+      popInitialNotification: true,
+      requestPermissions: true,
+    });
+  };
+
+  const scheduleNotification = () => {
+    PushNotification.localNotificationSchedule({
+      message: "N'oubliez pas de boire de l'eau!",
+      date: new Date(Date.now() + 3600 * 1000),
+      repeatType: 'hour',
+    });
   };
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <View style={styles.container}>
+      <Text style={styles.title}>Rappels d'Hydratation</Text>
+      <Text style={styles.text}>Verres d'eau bus aujourd'hui : {glasses}</Text>
+      <Button title="Ajouter un verre d'eau" onPress={addGlass} />
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f8ff',
   },
-  sectionTitle: {
+  title: {
     fontSize: 24,
-    fontWeight: '600',
+    marginBottom: 20,
   },
-  sectionDescription: {
-    marginTop: 8,
+  text: {
     fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+    marginBottom: 20,
   },
 });
 
